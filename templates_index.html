@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Aplikasi untuk memeriksa status registrasi produk kosmetik dan makanan dari BPOM Indonesia">
+    <title>BPOM Checker - Cek Registrasi Produk</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .header .subtitle {
+            color: #999;
+            font-size: 0.95em;
+        }
+
+        .search-section {
+            margin-bottom: 30px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            min-height: 50px;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-box input::placeholder {
+            color: #ccc;
+        }
+
+        .search-box button {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 50px;
+            white-space: nowrap;
+        }
+
+        .search-box button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .search-box button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result-card {
+            background: #f9f9f9;
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .result-card:hover {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transform: translateX(5px);
+        }
+
+        .result-card.not-found {
+            border-left-color: #ff6b6b;
+            background: #fff5f5;
+        }
+
+        .result-card.error {
+            border-left-color: #ffa500;
+            background: #fff9f0;
+        }
+
+        .result-card.warning {
+            border-left-color: #ffc107;
+            background: #fffbf0;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin: 5px 0;
+        }
+
+        .status-badge.registered {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.not-found {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-badge.error {
+            background: #ffe9d5;
+            color: #c2500c;
+        }
+
+        .status-badge.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .result-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+        }
+
+        .result-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .detail-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .detail-label {
+            font-size: 0.85em;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-size: 1em;
+            color: #333;
+            font-weight: 500;
+            word-wrap: break-word;
+        }
+
+        .warning-section {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 0.95em;
+        }
+
+        .warning-section strong {
+            color: #856404;
+        }
+
+        .warning-list {
+            list-style: none;
+            margin-top: 8px;
+            padding-left: 0;
+        }
+
+        .warning-list li {
+            color: #856404;
+            padding: 5px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .warning-list li:before {
+            content: "⚠";
+            position: absolute;
+            left: 0;
+            margin-right: 5px;
+        }
+
+        .cache-indicator {
+            font-size: 0.8em;
+            color: #999;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .cache-indicator.cached {
+            color: #667eea;
+        }
+
+        .json-viewer {
+            margin-top: 15px;
+        }
+
+        .json-toggle {
+            background: #f0f0f0;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            color: #667eea;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .json-toggle:hover {
+            background: #e0e0e0;
+        }
+
+        .json-content {
+            display: none;
+            background: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .json-content.show {
+            display: block;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .total-results {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 15px;
+        }
+
+        .no-results {
+            text-align: center;
+            color: #999;
+            padding: 30px;
+            font-size: 1.1em;
+        }
+
+        .suggested-searches {
+            background: #f0f4ff;
+            border: 1px solid #e0e6ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .suggested-searches h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .suggested-searches button {
+            background: white;
+            border: 1px solid #667eea;
+            color: #667eea;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .suggested-searches button:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .search-box {
+                flex-direction: column;
+            }
+
+            .search-box button {
+                width: 100%;
+            }
+
+            .result-details {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .header p {
+                font-size: 1em;
+            }
+
+            body {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 BPOM Checker</h1>
+            <p>Cek Status Registrasi Produk Kosmetik & Makanan</p>
+            <p class="subtitle">Verifikasi produk Anda langsung dari database BPOM (Badan Pengawas Obat dan Makanan)</p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="productInput" 
+                    placeholder="Masukkan nama produk (misal: Sariwangi, Susu Bear Brand, dll)" 
+                    autocomplete="off"
+                >
+                <button id="searchBtn" onclick="performSearch()">Cek</button>
+            </div>
+            <div class="suggested-searches">
+                <h3>📌 Contoh Pencarian:</h3>
+                <button onclick="quickSearch('Sariwangi')">Sariwangi</button>
+                <button onclick="quickSearch('Bear Brand')">Bear Brand</button>
+                <button onclick="quickSearch('Indomie')">Indomie</button>
+                <button onclick="quickSearch('Kecap ABC')">Kecap ABC</button>
+            </div>
+        </div>
+
+        <div class="loading-spinner" id="loadingSpinner"></div>
+
+        <div class="results-section" id="resultsSection"></div>
+    </div>
+
+    <script>
+        const productInput = document.getElementById('productInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsSection = document.getElementById('resultsSection');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        // Allow Enter key to trigger search
+        productInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        function quickSearch(product) {
+            productInput.value = product;
+            performSearch();
+        }
+
+        function performSearch() {
+            const product = productInput.value.trim();
+
+            if (!product) {
+                showError('Masukkan nama produk terlebih dahulu');
+                return;
+            }
+
+            if (product.length < 2) {
+                showError('Nama produk minimal 2 karakter');
+                return;
+            }
+
+            searchBtn.disabled = true;
+            loadingSpinner.style.display = 'block';
+            resultsSection.style.display = 'none';
+
+            fetch(`/cek?produk=${encodeURIComponent(product)}`)
+                .then(response => response.json())
+                .then(data => displayResults(data))
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('Gagal menghubungi server. Periksa koneksi internet Anda.');
+                })
+                .finally(() => {
+                    searchBtn.disabled = false;
+                    loadingSpinner.style.display = 'none';
+                });
+        }
+
+        function displayResults(data) {
+            resultsSection.innerHTML = '';
+
+            if (data.status === 'error') {
+                showError(data.pesan);
+                return;
+            }
+
+            if (data.status === 'not_found') {
+                showNotFound(data);
+                return;
+            }
+
+            if (data.status === 'found' && data.produk) {
+                const resultsHTML = data.produk.map((product, index) => {
+                    const hasWarning = product.warning && product.warning.length > 0;
+                    const warningClass = hasWarning ? 'warning' : '';
+
+                    let warningHTML = '';
+                    if (hasWarning) {
+                        const warningList = product.warning.map(w => `<li>${escapeHtml(w)}</li>`).join('');
+                        warningHTML = `
+                            <div class="warning-section">
+                                <strong>⚠️ Peringatan:</strong> Produk ini mengandung bahan yang perlu diperhatikan:
+                                <ul class="warning-list">
+                                    ${warningList}
+                                </ul>
+                            </div>
+                        `;
+                    }
+
+                    const cacheIndicator = data.dari_cache ? '<div class="cache-indicator cached">✓ Data dari cache (dimuat lebih cepat)</div>' : '';
+
+                    return `
+                        <div class="result-card ${warningClass}">
+                            <div class="result-title">${escapeHtml(product.nama_produk)}</div>
+                            <span class="status-badge registered">✓ Terdaftar di BPOM</span>
+                            
+                            <div class="result-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Nomor Registrasi</div>
+                                    <div class="detail-value">${escapeHtml(product.nomor_registrasi)}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Tipe Produk</div>
+                                    <div class="detail-value">${escapeHtml(product.tipe_produk)}</div>
+                                </div>
+                            </div>
+
+                            <div class="detail-item" style="grid-column: 1/-1;">
+                                <div class="detail-label">Pabrik / Manufaktur</div>
+                                <div class="detail-value">${escapeHtml(product.pabrik)}</div>
+                            </div>
+
+                            ${warningHTML}
+
+                            <div class="json-viewer">
+                                <button class="json-toggle" onclick="toggleJSON(this)">📋 Lihat Data JSON</button>
+                                <pre class="json-content">${syntaxHighlight(JSON.stringify(product, null, 2))}</pre>
+                            </div>
+
+                            ${cacheIndicator}
+                        </div>
+                    `;
+                }).join('');
+
+                const totalResults = data.total_hasil > 1 
+                    ? `<div class="total-results">Ditemukan ${data.total_hasil} produk yang cocok</div>` 
+                    : '';
+
+                resultsSection.innerHTML = `
+                    <div class="success-message">
+                        ✓ Produk ditemukan di database BPOM
+                    </div>
+                    ${totalResults}
+                    ${resultsHTML}
+                `;
+            } else {
+                showNotFound(data);
+            }
+
+            resultsSection.style.display = 'block';
+        }
+
+        function showError(message) {
+            resultsSection.innerHTML = `<div class="error-message">❌ ${escapeHtml(message)}</div>`;
+            resultsSection.style.display = 'block';
+        }
+
+        function showNotFound(data) {
+            resultsSection.innerHTML = `
+                <div class="result-card not-found">
+                    <div class="no-results">
+                        ❌ ${escapeHtml(data.pesan || 'Produk tidak ditemukan')}
+                    </div>
+                </div>
+            `;
+            resultsSection.style.display = 'block';
+        }
+
+        function toggleJSON(button) {
+            const jsonContent = button.nextElementSibling;
+            jsonContent.classList.toggle('show');
+            button.textContent = jsonContent.classList.contains('show') 
+                ? '📋 Sembunyikan Data JSON' 
+                : '📋 Lihat Data JSON';
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'key';
+                    } else {
+                        cls = 'string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'null';
+                }
+                return '<span style="color: ' + getColorForClass(cls) + '">' + match + '</span>';
+            });
+        }
+
+        function getColorForClass(cls) {
+            const colors = {
+                'key': '#f92672',
+                'string': '#a6e22e',
+                'number': '#ae81ff',
+                'boolean': '#ae81ff',
+                'null': '#ae81ff'
+            };
+            return colors[cls] || '#f8f8f2';
+        }
+    </script>
+</body>
+</html>
